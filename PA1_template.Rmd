@@ -1,25 +1,91 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Course Project 1"
+output: html_document
 ---
 
+```{r, Load the data and all relevent packages}
+setwd("C:\\Users\\Brian\\Documents")
+library(knitr)
+library(ggplot2)
+mydata<-read.csv("activity.csv", stingsAsFactors=FALSE, header=TRUE, sep=",")
+echo=TRUE
+```
 
-## Loading and preprocessing the data
+```{r, Process data to make it useable}
+mydata$date<-as.Date(mydata$date)
+mydataNA<-na.omit(mydata)
+echo=TRUE
+```
+
+```{r, Determine the mean total number of steps taken per day}
+aggregate(steps~date, data=mydata, FUN=function(mydata) c(mean=mean(mydata), count=length(mydata)))
+echo=TRUE
+```
+
+```{r, Make a histogram of the total number of steps taken each day}
+daysteps<-aggregate(steps~date,mydataNA, sum)
+hist(daysteps$steps, freq=TRUE, main="Total Steps Taken in a Day", xlab="Steps", ylab="Frequency of occurance", ylim=c(0,30))
+echo=TRUE
+```
+
+```{r, Calculate the mean and median of the total number of steps per day}
+mean(daysteps$steps)
+median(daysteps$steps)
+echo=TRUE
+```
+The mean is 10766.19 and the median is 10765.
+
+```{r, Make a time series plot of the 5-minute interval and average number of steps take across all days}
+daysteps5min<-aggregate(steps~interval, mydataNA, mean)
+plot(daysteps5min$interval, daysteps5min$steps, type="l",main="Steps Taken per 5-minute Interval", xlab="Time", ylab="Steps Taken", lwd=2)
+echo=TRUE
+```
+
+```{r, Which 5-minute interval contains the maximum number of steps}
+max<-which.max(daysteps5min$steps)
+max
+echo=TRUE
+```
+104
+
+```{r, Calculate and report the total number of missing values in the dataset}
+sum(is.na(mydata))
+echo=TRUE
+```
+2304
+
+```{r, Devise a strategy for handling the missing values in Dataset and create a new dataset}
+meanvalue<-mean(mydata[,"steps"], na.rm=TRUE)
+mydata2<-mydata
+mydata2[is.na(mydata2$steps), "steps"] <-meanvalue
+echo=TRUE
+```
+I chose to take the mean of the values and replace the NA"s with this figure. The mean value was 37.38.The new data set morphed existing values with the newly replaced NA figures.
+
+```{r, Make a hist of the total number of steps taken each data and the mean and median number of steps taken per day}
+finalsteps<-aggregate(mydata2$steps, by=list(category=mydata2$date), FUN=sum)
+hist(finalsteps$x, freq=TRUE, main= "Total Steps Taken in a Day (cleaned)", xlab="Steps", ylab="Frequency of occurance")
+mean(finalsteps$x)
+median(finalsteps$x)
+echo=TRUE
+```
+The mean remains the same (10766.19) while the median value increased slightly from 10765 to 10766.19.
 
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```{r, Compare the data for the weekday and weekend}
+##Organize data into two variables, weekday and weekend, by reverting back to original class and seperating it out
+##I used the ggplot2 system for simplicity's sake
+mydata2[,"date"] <- as.POSIXct(as.character(mydata2$date))
+mydata2[,"weekdays"] <- ifelse(weekdays(mydata2$date) == "Sunday" | weekdays(mydata2$date) =="Saturday", "weekends", "weekdays")
+mydata2[,"weekdays"] <- as.factor(mydata2$weekdays)
+workdaydata <- mydata2[mydata2$weekdays == "weekdays",]
+weekenddata <- mydata2[mydata2$weekdays == "weekends",]
+weekdays <- aggregate(workdaydata$steps, by=list(interval=workdaydata$interval), FUN=mean, na.rm=TRUE)
+weekdays[,"weekdays"] <- as.factor("weekdays")
+weekenddays <- aggregate(weekenddata$steps, by=list(interval=weekenddata$interval), FUN=mean, na.rm=TRUE)
+weekenddays[, "weekdays"] <- as.factor("weekends")
+mydata3 <- rbind(weekenddays, weekdays)
+colnames(mydata3)[colnames(mydata3)=="x"] <- "steps"
+qplot(interval, steps, data=mydata3, geom="line", facets = weekdays ~., main="Average Steps taken per 5-,minute interval for Weekdays and Weekends")
+echo=TRUE
+```
